@@ -21,6 +21,10 @@ defmodule GatewayKit.Store do
 
   @tables [@rate_limits, @breakers, @balancer, @upstream_health]
 
+  # Expired rate-limit windows are garbage; one sweep a minute keeps the table bounded by the
+  # number of *active* buckets rather than the number of buckets ever seen.
+  @sweep_interval_ms 60_000
+
   @table_opts [
     :set,
     :named_table,
@@ -50,6 +54,18 @@ defmodule GatewayKit.Store do
   @spec tables() :: [atom()]
   def tables, do: @tables
 
+  @doc """
+  Deletes rate-limit rows whose expiry has passed.
+
+  Windowed counter rows are `{{key, index}, count, expires_at_ms}` (see
+  `GatewayKit.RateLimit.Window`); this is the one place outside that module that relies on the
+  layout. Runs on a timer, and is public so tests can drive it with an explicit clock.
+  """
+  @spec sweep(integer()) :: non_neg_integer()
+  def sweep(now_ms) do
+    :ets.select_delete(@rate_limits, [{{:_, :_, :"$1"}, [{:<, :"$1", now_ms}], [true]}])
+  end
+
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -58,6 +74,16 @@ defmodule GatewayKit.Store do
   @impl GenServer
   def init(_opts) do
     Enum.each(@tables, &:ets.new(&1, @table_opts))
+    schedule_sweep()
     {:ok, %{}}
   end
+
+  @impl GenServer
+  def handle_info(:sweep, state) do
+    sweep(System.system_time(:millisecond))
+    schedule_sweep()
+    {:noreply, state}
+  end
+
+  defp schedule_sweep, do: Process.send_after(self(), :sweep, @sweep_interval_ms)
 end

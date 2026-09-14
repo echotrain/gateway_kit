@@ -1,11 +1,15 @@
 # Rate limiting: one route per strategy, plus a route with no rate_limit block of its own that
 # must inherit global_rate_limit.
+#
+# Fixed windows are an hour long so a test's burst of requests cannot straddle a window boundary
+# (which would legitimately reset the count mid-test). The sliding-window route keeps a short
+# window: its weighted previous-window count makes it robust across boundaries.
 
 gateway:
   port: 8080
   global_rate_limit:
     requests: 5
-    window: "10s"
+    window: "1h"
     strategy: "fixed_window"
     per: "global"
 
@@ -17,7 +21,7 @@ routes:
       url: "http://127.0.0.1:${UPSTREAM_PORT}"
     rate_limit:
       requests: 10
-      window: "10s"
+      window: "1h"
       strategy: "fixed_window"
       per: "ip"
 
@@ -32,7 +36,7 @@ routes:
       strategy: "sliding_window"
       per: "ip"
 
-  # No rate_limit here: the global default (5 per 10s, global bucket) applies.
+  # No rate_limit here: the global default (5 per hour, global bucket) applies.
   - path: "/api/inherited"
     methods: ["GET"]
     strip_prefix: false

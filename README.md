@@ -109,7 +109,7 @@ is tested with an injectable clock, not `Process.sleep`.
 | Proxying with header hygiene                 |   ✅   | hop-by-hop stripped, `Host` rewritten, `X-Forwarded-*` |
 | Per-route timeouts (504) / upstream down (502)|  ✅   | `global_timeout` folded into each route                |
 | `api_key` auth                               |   ✅   | constant-time compare; missing and wrong key look alike |
-| Rate limiting (fixed / sliding window)       |   ❌   | parsed, not enforced yet                               |
+| Rate limiting (fixed / sliding window)       |   ✅   | atomic ETS counters; `per: ip` / `global`; 429 + headers |
 | Retry with backoff                           |   ❌   | parsed, not enforced yet                               |
 | Circuit breaker                              |   ❌   | parsed, not enforced yet                               |
 | Request / response transforms               |   ❌   | parsed, not applied yet                                |

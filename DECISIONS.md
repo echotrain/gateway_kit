@@ -264,12 +264,50 @@ short-circuit, so timing does not leak which key matched); a missing header and 
 return the identical 401 body. `type: api_key` is matched explicitly so `bearer` / `jwt` are
 additive clauses.
 
+### Phase 3 — rate limiting
+
+> *"What happens when 50 requests hit a rate-limited route simultaneously?"*
+
+Exactly 10 succeed (for `requests: 10`) and 40 get a 429 — and there is an end-to-end test
+asserting it with 50 concurrent HTTP requests through a real gateway, plus a unit test doing the
+same against both strategies with a fixed clock.
+
+How: each request is one atomic `:ets.update_counter/4` on a public table with
+`write_concurrency` and `decentralized_counters`. The request is allowed when the count
+*including its own increment* is within the limit, so there is no read-then-write window in which
+two requests can both see "9" and both pass. No GenServer sits on the request path, so there is
+no serialization bottleneck to become the limiter's own bottleneck.
+
+- `GatewayKit.RateLimit.Window` — windowed counters keyed `{{route_id, bucket}, window_index}`,
+  with an expiry two windows out so `Store` can sweep them on a timer without knowing any
+  policy's window size. The table stays bounded by *active* buckets, not buckets ever seen.
+- `FixedWindow` — one increment; allow if `count <= limit`.
+- `SlidingWindow` — the sliding-window **counter** algorithm: `previous × (1 − elapsed) +
+  current`. Two atomic operations, O(1) memory per bucket, lock-free. A sliding *log* is exact but
+  stores one entry per request and needs serialization to stay consistent; the counter's
+  approximation (it assumes the previous window's requests were evenly spread) is bounded and is
+  what Cloudflare runs at their edge. A denied request is decremented again so hammering a limit
+  does not inflate the next window's weighted count. `Retry-After` is computed from when the
+  previous window will have aged enough for one more request to fit, not just "end of window".
+- `Stage.RateLimit` — builds the bucket key (`client_ip` or `:global`), calls
+  `RateLimit.check/3` with the clock as an explicit argument, and renders `429
+  {"error":"rate_limit_exceeded","retry_after":N}` with `Retry-After` and
+  `X-RateLimit-{Limit,Remaining,Reset}` (seconds, rounded up). Allowed responses carry the
+  `X-RateLimit-*` headers too.
+- Route policies override `global_rate_limit`, and the resolution happened at **load time**
+  (Phase 1), so the stage never falls back to a global value at request time.
+- **Injectable clock.** Every strategy takes `now_ms`; unit tests advance time by passing it.
+  There is no `Process.sleep` for window expiry anywhere in the suite. The end-to-end fixture
+  uses hour-long fixed windows so a test burst cannot straddle a window boundary.
+- **`per: "ip"` uses the peer address only.** `X-Forwarded-For` is client-controlled; honouring
+  it without a trusted-proxy allowlist is a one-header bypass.
+
 ## 8. Not built yet
 
 Everything below is **parsed and validated** (a config using it boots) but not enforced; the
 omission is logged once at `info` per route:
 
-`rate_limit`, `retry`, `circuit_breaker`, `request_transform`, `response_transform`,
+`retry`, `circuit_breaker`, `request_transform`, `response_transform`,
 load balancing (`targets` accepted, first target used), `health_check`.
 
 ## 9. How AI tools were used
