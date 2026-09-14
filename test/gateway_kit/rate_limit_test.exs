@@ -41,13 +41,13 @@ defmodule GatewayKit.RateLimitTest do
     test "removes windowed rows once their expiry has passed", %{start: start} do
       key = {System.unique_integer([:positive]), "10.0.0.1"}
       index = Window.index(start, @window)
-      Window.increment(Store.rate_limits(), key, index, @window)
+      Window.increment(Store.windows(), key, index, @window)
 
       Store.sweep(Window.starts_at(index + 2, @window) - 1)
-      assert Window.count(Store.rate_limits(), key, index) == 1
+      assert Window.count(Store.windows(), key, index) == 1
 
       Store.sweep(Window.starts_at(index + 2, @window) + 1)
-      assert Window.count(Store.rate_limits(), key, index) == 0
+      assert Window.count(Store.windows(), key, index) == 0
     end
   end
 end

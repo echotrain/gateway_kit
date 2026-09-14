@@ -21,6 +21,6 @@ defmodule GatewayKit.RateLimit do
   @doc "Counts one request against `key` under `policy` at `now_ms` and decides."
   @spec check(Policy.t(), term(), integer()) :: decision()
   def check(%Policy{strategy: strategy} = policy, key, now_ms) do
-    Map.fetch!(@strategies, strategy).check(Store.rate_limits(), key, policy, now_ms)
+    Map.fetch!(@strategies, strategy).check(Store.windows(), key, policy, now_ms)
   end
 end

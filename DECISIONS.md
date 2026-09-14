@@ -325,13 +325,42 @@ What is retried, and why the line is where it is:
 Retries sit inside rate limiting (no quota consumed) and inside the breaker (three failed
 attempts count as one failure). A retry is logged at `info` with the delay and attempt number.
 
+### Phase 5 — circuit breaker
+
+`GatewayKit.Breaker` is a per-route state machine in ETS — closed → open → half-open — with
+no process on the request path, and `Stage.CircuitBreaker` is the wrapping stage that checks
+before the call and records after it. The rejection body is exactly the spec's:
+`503 {"error":"service_unavailable","retry_after":<seconds_remaining>}`, with `retry_after`
+computed from the cooldown actually remaining.
+
+- **Rolling failure window.** "5 failures within 60s" is counted with the same sliding-window
+  counter as rate limiting (keyed `{:breaker, route_id}` in the shared windows table, so it is
+  swept like any other window). Failures that have aged out no longer count; successes neither
+  reset nor extend the window.
+- **Failure = any 5xx**: an upstream 5xx or a gateway-generated 502/504. A 4xx is a healthy
+  upstream answering correctly and is never counted.
+- **Half-open with exactly one trial.** When the cooldown elapses, the open → half-open
+  transition is a compare-and-swap (`:ets.select_replace/2` guarded on the exact
+  `{state, since}` observed), so fifty concurrent requests at cooldown expiry yield one trial and
+  forty-nine rejections — the thundering-herd case the plain "wait, then try again" reading of
+  the spec would allow. A trial that never reports back (its process died) is superseded after
+  another cooldown. Requests rejected during a trial are told `retry_after: 1` — the cooldown
+  has genuinely elapsed, but advising "0" would only invite a tight loop.
+- **A successful trial closes the breaker with a clean window**, so the failures that tripped it
+  cannot re-trip it on the first post-recovery hiccup. A failed trial reopens it with a fresh
+  cooldown.
+- **Retries count once.** The stage sits outside retry, so a request that exhausts three attempts
+  is one failure, not three — verified end to end.
+- Mimic was not needed: the mock upstream's status endpoint and stopping it produce the real 5xx
+  and transport-failure conditions.
+
 ## 8. Not built yet
 
 Everything below is **parsed and validated** (a config using it boots) but not enforced; the
 omission is logged once at `info` per route:
 
-`circuit_breaker`, `request_transform`, `response_transform`,
-load balancing (`targets` accepted, first target used), `health_check`.
+`request_transform`, `response_transform`, load balancing (`targets` accepted, first target
+used), `health_check`.
 
 ## 9. How AI tools were used
 

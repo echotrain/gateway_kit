@@ -21,6 +21,7 @@ defmodule GatewayKit.Pipeline do
   @stages [
     GatewayKit.Stage.Auth,
     GatewayKit.Stage.RateLimit,
+    GatewayKit.Stage.CircuitBreaker,
     GatewayKit.Stage.Retry,
     GatewayKit.Stage.Proxy
   ]
@@ -28,7 +29,6 @@ defmodule GatewayKit.Pipeline do
   # Config features the validator accepts but no stage implements yet. A route using one still
   # boots; the omission is logged once here, never fatal.
   @unimplemented [
-    circuit_breaker: "circuit breaking",
     request_transform: "request transformation",
     response_transform: "response transformation",
     health_check: "active health checks"

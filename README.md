@@ -111,7 +111,7 @@ is tested with an injectable clock, not `Process.sleep`.
 | `api_key` auth                               |   ✅   | constant-time compare; missing and wrong key look alike |
 | Rate limiting (fixed / sliding window)       |   ✅   | atomic ETS counters; `per: ip` / `global`; 429 + headers |
 | Retry with backoff                           |   ✅   | fixed / exponential; never replays after a timeout     |
-| Circuit breaker                              |   ❌   | parsed, not enforced yet                               |
+| Circuit breaker                              |   ✅   | closed → open → half-open; single trial via ETS CAS    |
 | Request / response transforms               |   ❌   | parsed, not applied yet                                |
 | Load balancing (round robin / weighted)      |   ❌   | `targets` accepted; first target used                  |
 | Active health checks                         |   ❌   | parsed, not running                                    |

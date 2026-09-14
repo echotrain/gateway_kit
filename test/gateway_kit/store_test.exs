@@ -15,7 +15,7 @@ defmodule GatewayKit.StoreTest do
     end
 
     test "exposes a distinct table per kind of state" do
-      tables = [Store.rate_limits(), Store.breakers(), Store.balancer(), Store.upstream_health()]
+      tables = [Store.windows(), Store.breakers(), Store.balancer(), Store.upstream_health()]
 
       assert Enum.sort(tables) == Enum.sort(Store.tables())
       assert length(Enum.uniq(tables)) == 4

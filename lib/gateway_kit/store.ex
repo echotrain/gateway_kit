@@ -14,15 +14,15 @@ defmodule GatewayKit.Store do
 
   use GenServer
 
-  @rate_limits :gateway_kit_rate_limits
+  @windows :gateway_kit_windows
   @breakers :gateway_kit_breakers
   @balancer :gateway_kit_balancer
   @upstream_health :gateway_kit_upstream_health
 
-  @tables [@rate_limits, @breakers, @balancer, @upstream_health]
+  @tables [@windows, @breakers, @balancer, @upstream_health]
 
-  # Expired rate-limit windows are garbage; one sweep a minute keeps the table bounded by the
-  # number of *active* buckets rather than the number of buckets ever seen.
+  # Expired windows are garbage; one sweep a minute keeps the table bounded by the number of
+  # *active* buckets rather than the number of buckets ever seen.
   @sweep_interval_ms 60_000
 
   @table_opts [
@@ -34,9 +34,9 @@ defmodule GatewayKit.Store do
     decentralized_counters: true
   ]
 
-  @doc "Rate-limit window counters."
-  @spec rate_limits() :: atom()
-  def rate_limits, do: @rate_limits
+  @doc "Windowed counters: rate-limit buckets and circuit-breaker failure windows."
+  @spec windows() :: atom()
+  def windows, do: @windows
 
   @doc "Circuit-breaker state, one entry per route."
   @spec breakers() :: atom()
@@ -55,15 +55,15 @@ defmodule GatewayKit.Store do
   def tables, do: @tables
 
   @doc """
-  Deletes rate-limit rows whose expiry has passed.
+  Deletes windowed-counter rows whose expiry has passed.
 
-  Windowed counter rows are `{{key, index}, count, expires_at_ms}` (see
-  `GatewayKit.RateLimit.Window`); this is the one place outside that module that relies on the
-  layout. Runs on a timer, and is public so tests can drive it with an explicit clock.
+  Rows are `{{key, index}, count, expires_at_ms}` (see `GatewayKit.RateLimit.Window`); this is
+  the one place outside that module that relies on the layout. Runs on a timer, and is public so
+  tests can drive it with an explicit clock.
   """
   @spec sweep(integer()) :: non_neg_integer()
   def sweep(now_ms) do
-    :ets.select_delete(@rate_limits, [{{:_, :_, :"$1"}, [{:<, :"$1", now_ms}], [true]}])
+    :ets.select_delete(@windows, [{{:_, :_, :"$1"}, [{:<, :"$1", now_ms}], [true]}])
   end
 
   @spec start_link(keyword()) :: GenServer.on_start()

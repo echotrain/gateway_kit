@@ -10,7 +10,7 @@ defmodule GatewayKit.RateLimit.SlidingWindowTest do
 
   setup do
     start = Window.starts_at(Window.index(System.system_time(:millisecond), @window) + 1, @window)
-    %{key: {System.unique_integer([:positive]), "10.0.0.1"}, start: start, table: Store.rate_limits()}
+    %{key: {System.unique_integer([:positive]), "10.0.0.1"}, start: start, table: Store.windows()}
   end
 
   defp fill(table, key, at) do

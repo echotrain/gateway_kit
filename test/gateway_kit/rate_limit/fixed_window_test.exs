@@ -12,7 +12,7 @@ defmodule GatewayKit.RateLimit.FixedWindowTest do
     # Start of the *next* real-time window: deterministic arithmetic, and rows the store's
     # timer-driven sweep cannot consider expired.
     start = Window.starts_at(Window.index(System.system_time(:millisecond), @window) + 1, @window)
-    %{key: {System.unique_integer([:positive]), "10.0.0.1"}, start: start, table: Store.rate_limits()}
+    %{key: {System.unique_integer([:positive]), "10.0.0.1"}, start: start, table: Store.windows()}
   end
 
   describe "GatewayKit.RateLimit.FixedWindow.check/4" do
