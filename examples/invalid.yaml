@@ -3,7 +3,7 @@
 # Well-formed YAML with six distinct schema errors in different places, so the report shows
 # several lines and each error is attributed to its own path:
 #
-#   gateway.port                  string instead of integer
+#   gateway.port                  out of range (a quoted "8080" would be accepted)
 #   routes[0].methods             string instead of list
 #   routes[1].rate_limit.window   integer instead of duration
 #   routes[2].upstream            neither url nor targets
@@ -11,7 +11,7 @@
 #   routes[4]                     missing path
 
 gateway:
-  port: "8080"
+  port: 808080
   global_timeout: "30s"
 
 routes:

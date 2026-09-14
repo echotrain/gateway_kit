@@ -12,6 +12,8 @@ defmodule GatewayKit.Config.Validator do
   * **Globals are folded in at load time.** Each route carries its own timeout and rate limit,
     so nothing on the request path consults `gateway.*` defaults.
   * **`url:` and `targets:` normalize to one shape** — a non-empty list of `%Target{}`.
+  * **Quoted numbers and booleans are accepted** (`port: "8080"`, `strip_prefix: "true"`) where
+    the field type makes them unambiguous; string fields are never coerced.
   """
 
   alias GatewayKit.Config
@@ -341,6 +343,7 @@ defmodule GatewayKit.Config.Validator do
   # ---------------------------------------------------------------------------
 
   defp port(value, _path) when is_integer(value) and value in 1..65_535, do: {:ok, value}
+  defp port(value, path) when is_binary(value), do: unquoted(value, path, &port/2, "expected an integer 1..65535")
   defp port(value, path), do: error(path, "expected an integer 1..65535, got: #{inspect(value)}")
 
   defp duration(value, path) do
@@ -358,10 +361,37 @@ defmodule GatewayKit.Config.Validator do
   end
 
   defp positive_integer(value, _path) when is_integer(value) and value > 0, do: {:ok, value}
+
+  defp positive_integer(value, path) when is_binary(value) do
+    unquoted(value, path, &positive_integer/2, "expected a positive integer")
+  end
+
   defp positive_integer(value, path), do: error(path, "expected a positive integer, got: #{inspect(value)}")
 
   defp boolean(value, _path) when is_boolean(value), do: {:ok, value}
+  defp boolean(value, path) when is_binary(value), do: unquoted(value, path, &boolean/2, "expected true or false")
   defp boolean(value, path), do: error(path, "expected true or false, got: #{inspect(value)}")
+
+  # YAML authors often quote scalars ("8080", "true"). For integer and boolean fields the quoted
+  # form is unambiguous, so it is accepted. String fields (API keys, header names) never go
+  # through here, so a numeric-looking key stays a string.
+  defp unquoted(value, path, parser, expectation) do
+    case unquote_scalar(value) do
+      {:ok, scalar} -> parser.(scalar, path)
+      :error -> error(path, "#{expectation}, got: #{inspect(value)}")
+    end
+  end
+
+  defp unquote_scalar(value) do
+    trimmed = String.trim(value)
+
+    case {Integer.parse(trimmed), trimmed} do
+      {{integer, ""}, _trimmed} -> {:ok, integer}
+      {_not_integer, "true"} -> {:ok, true}
+      {_not_integer, "false"} -> {:ok, false}
+      _other -> :error
+    end
+  end
 
   defp map(value, _path) when is_map(value), do: {:ok, value}
   defp map(value, path), do: error(path, "expected a map, got: #{inspect(value)}")
@@ -408,14 +438,25 @@ defmodule GatewayKit.Config.Validator do
   defp url(value, path), do: error(path, "expected an http(s) URL, got: #{inspect(value)}")
 
   defp status_codes(value, path) when is_list(value) and value != [] do
-    if Enum.all?(value, &(is_integer(&1) and &1 in 100..599)) do
-      {:ok, Enum.uniq(value)}
+    codes = Enum.map(value, &unquote_code/1)
+
+    if Enum.all?(codes, &(is_integer(&1) and &1 in 100..599)) do
+      {:ok, Enum.uniq(codes)}
     else
       error(path, "expected a list of HTTP status codes, got: #{inspect(value)}")
     end
   end
 
   defp status_codes(value, path), do: error(path, "expected a list of HTTP status codes, got: #{inspect(value)}")
+
+  defp unquote_code(code) when is_binary(code) do
+    case unquote_scalar(code) do
+      {:ok, integer} when is_integer(integer) -> integer
+      _other -> code
+    end
+  end
+
+  defp unquote_code(code), do: code
 
   defp string_list(value, path) when is_list(value) and value != [] do
     if Enum.all?(value, &(is_binary(&1) and &1 != "")) do

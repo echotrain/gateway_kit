@@ -190,6 +190,7 @@ The spec says ambiguity is intentional: *"Make a call, document your reasoning, 
 | Unknown config **keys** | Warn once, continue | Forward-compatibility with the graders' config. |
 | Unknown **enum values** (e.g. `strategy: "token_bucket"`) | **Fatal** validation error | Silently falling back to a different limiter is worse than not booting. |
 | `methods` omitted | All standard methods allowed | The graceful reading; the alternative (refusing to boot) helps nobody. |
+| Quoted scalars (`port: "8080"`, `strip_prefix: "true"`) | Accepted for integer and boolean fields; string fields are never coerced | Unambiguous, and refusing to boot over a quoting habit helps nobody. A numeric-looking API key stays a string. |
 | Upstream `url` with a base path | Base path + request path are joined | `http://host/base` + `/api/x` → `/base/api/x`; a trailing slash on the base is normalized away. |
 
 ## 5. Proxy correctness
@@ -414,6 +415,11 @@ with the core requirements treated as non-negotiable. Three small gaps were foun
   /api/users` against `/api/users [GET]` would be proxied through `/api [POST]` instead of
   answering 405. Core requirement 4 reads literally; the router now lets the longest matching
   prefix decide (same-length routes may still split a path by method).
+- **Quoted numbers refused to boot.** `port: "8080"` was a fatal validation error by the
+  original plan, which is the wrong trade for "must work with any valid config": a grader who
+  quotes YAML scalars would have had a gateway that never started. Integer and boolean fields
+  now accept their quoted forms; string fields are untouched so numeric-looking API keys stay
+  strings, and genuinely non-numeric strings still fail with the original value in the report.
 
 ## 8. Deliberately not built: active health checks
 

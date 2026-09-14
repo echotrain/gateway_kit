@@ -71,13 +71,13 @@ defmodule GatewayKit.Config.LoaderTest do
     end
 
     test "reports validation errors as an aligned report" do
-      path = write_tmp("gateway:\n  port: \"8080\"\nroutes:\n  - path: /a\n    upstream: {}\n")
+      path = write_tmp("gateway:\n  port: 0\nroutes:\n  - path: /a\n    upstream: {}\n")
 
       assert {:error, {:invalid, [%Error{}, %Error{}] = errors}} = Loader.load(path)
 
       assert Loader.format_error(path, {:invalid, errors}) == """
              Invalid gateway config (#{path}):
-               gateway.port         expected an integer 1..65535, got: "8080"
+               gateway.port         expected an integer 1..65535, got: 0
                routes[0].upstream   must have either "url" or "targets"\
              """
     end

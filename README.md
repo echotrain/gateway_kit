@@ -77,7 +77,7 @@ process exits non-zero:
 ```
 $ GATEWAY_CONFIG=examples/invalid.yaml mix run --no-halt
 Invalid gateway config (examples/invalid.yaml):
-  gateway.port                    expected an integer 1..65535, got: "8080"
+  gateway.port                    expected an integer 1..65535, got: 808080
   routes[0].methods               expected a list of methods like ["GET", "POST"], got: "GET"
   routes[1].rate_limit.window     expected a duration like "60s", got: 60
   routes[2].upstream              must have either "url" or "targets"
@@ -85,7 +85,9 @@ Invalid gateway config (examples/invalid.yaml):
   routes[4].path                  is required
 ```
 
-Unknown keys are warned about at boot and ignored; unknown enum values are fatal.
+Unknown keys are warned about at boot and ignored; unknown enum values are fatal. Quoted numbers
+and booleans (`port: "8080"`, `strip_prefix: "true"`) are accepted where the field type makes
+them unambiguous.
 
 ## Testing
 

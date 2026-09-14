@@ -175,7 +175,7 @@ defmodule GatewayKit.Config.ValidatorTest do
   describe "GatewayKit.Config.Validator.validate/1 errors" do
     test "reports every problem across sections in config order" do
       raw = %{
-        "gateway" => %{"port" => "8080"},
+        "gateway" => %{"port" => "eighty"},
         "routes" => [
           %{"path" => "/a", "upstream" => %{}, "rate_limit" => %{"requests" => 1, "window" => 60}},
           %{"path" => "/b", "methods" => "GET", "upstream" => %{"url" => "http://x:1"}},
@@ -193,7 +193,32 @@ defmodule GatewayKit.Config.ValidatorTest do
                "routes[2].path"
              ]
 
-      assert hd(errors).message == ~s(expected an integer 1..65535, got: "8080")
+      assert hd(errors).message == ~s(expected an integer 1..65535, got: "eighty")
+    end
+
+    test "quoted integers and booleans are accepted where the type is unambiguous" do
+      route =
+        raw_route(%{
+          "strip_prefix" => "true",
+          "upstream" => %{"targets" => [%{"url" => "http://h:1", "weight" => "3"}]},
+          "retry" => %{"attempts" => "2", "on" => ["503", 502]},
+          "rate_limit" => %{"requests" => "10", "window" => "1s"},
+          "auth" => %{"type" => "api_key", "header" => "X-Key", "keys" => ["12345"]}
+        })
+
+      assert {:ok, %Config{port: 8080, routes: [route]}} = Validator.validate(raw_config([route], %{"port" => "8080"}))
+      assert route.strip_prefix == true
+      assert [%Target{weight: 3}] = route.upstream.targets
+      assert %Retry{attempts: 2, on: [503, 502]} = route.retry
+      assert %RateLimit{requests: 10} = route.rate_limit
+      assert %Auth{keys: ["12345"]} = route.auth
+    end
+
+    test "strings that are not numbers or booleans are still rejected, showing the original value" do
+      errors = errors(raw_config([raw_route(%{"strip_prefix" => "yes"})], %{"port" => "eighty"}))
+
+      assert errors["gateway.port"] == ~s(expected an integer 1..65535, got: "eighty")
+      assert errors["routes[0].strip_prefix"] == ~s(expected true or false, got: "yes")
     end
 
     test "unknown enum values are fatal" do
