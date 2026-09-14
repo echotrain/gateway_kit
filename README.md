@@ -110,7 +110,7 @@ is tested with an injectable clock, not `Process.sleep`.
 | Per-route timeouts (504) / upstream down (502)|  ✅   | `global_timeout` folded into each route                |
 | `api_key` auth                               |   ✅   | constant-time compare; missing and wrong key look alike |
 | Rate limiting (fixed / sliding window)       |   ✅   | atomic ETS counters; `per: ip` / `global`; 429 + headers |
-| Retry with backoff                           |   ❌   | parsed, not enforced yet                               |
+| Retry with backoff                           |   ✅   | fixed / exponential; never replays after a timeout     |
 | Circuit breaker                              |   ❌   | parsed, not enforced yet                               |
 | Request / response transforms               |   ❌   | parsed, not applied yet                                |
 | Load balancing (round robin / weighted)      |   ❌   | `targets` accepted; first target used                  |

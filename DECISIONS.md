@@ -302,12 +302,35 @@ no serialization bottleneck to become the limiter's own bottleneck.
 - **`per: "ip"` uses the peer address only.** `X-Forwarded-For` is client-controlled; honouring
   it without a trusted-proxy allowlist is a one-header bypass.
 
+### Phase 4 — timeouts and retry
+
+Per-route timeouts were wired in Phase 1 (the validator folds `global_timeout` into every
+route's upstream, and the proxy passes it to Finch per attempt). This phase adds `Backoff`
+(`fixed` / `exponential`, no jitter yet) and `Stage.Retry`, which wraps only the proxy: each
+attempt starts from the original context, and the timeout applies per attempt.
+
+What is retried, and why the line is where it is:
+
+- An upstream answer whose status is in `on` — the upstream told us it could not serve the
+  request; replaying is what the operator asked for.
+- A failure to reach the upstream at all (`econnrefused`, `nxdomain`, unreachable network) —
+  the request provably never executed.
+- **Not a timeout, ever.** Even with `504` in `on`, a 504 that the *gateway* generated from a
+  timeout is not replayed: the request may have executed, and a duplicated `POST /orders` is
+  worse than a 504. An upstream-*returned* 504 is a normal status and is replayed if listed.
+  `Context.halted?` is what tells the two apart. Finch reports connect and response timeouts with
+  the same `:timeout` reason, so the conservative rule covers both; distinguishing them (and
+  replaying connect timeouts) is a small follow-up once Finch exposes it.
+
+Retries sit inside rate limiting (no quota consumed) and inside the breaker (three failed
+attempts count as one failure). A retry is logged at `info` with the delay and attempt number.
+
 ## 8. Not built yet
 
 Everything below is **parsed and validated** (a config using it boots) but not enforced; the
 omission is logged once at `info` per route:
 
-`retry`, `circuit_breaker`, `request_transform`, `response_transform`,
+`circuit_breaker`, `request_transform`, `response_transform`,
 load balancing (`targets` accepted, first target used), `health_check`.
 
 ## 9. How AI tools were used

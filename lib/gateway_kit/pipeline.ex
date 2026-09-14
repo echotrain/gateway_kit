@@ -21,6 +21,7 @@ defmodule GatewayKit.Pipeline do
   @stages [
     GatewayKit.Stage.Auth,
     GatewayKit.Stage.RateLimit,
+    GatewayKit.Stage.Retry,
     GatewayKit.Stage.Proxy
   ]
 
@@ -30,7 +31,6 @@ defmodule GatewayKit.Pipeline do
     circuit_breaker: "circuit breaking",
     request_transform: "request transformation",
     response_transform: "response transformation",
-    retry: "retries",
     health_check: "active health checks"
   ]
 
