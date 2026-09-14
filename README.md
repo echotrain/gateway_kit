@@ -114,10 +114,12 @@ is tested with an injectable clock, not `Process.sleep`.
 | Circuit breaker                              |   ✅   | closed → open → half-open; single trial via ETS CAS    |
 | Request / response transforms               |   ✅   | headers add/remove, body mapping, envelope, `$vars`    |
 | Load balancing (round robin / weighted)      |   ✅   | ring expanded at load; one atomic cursor per route     |
-| Active health checks                         |   ❌   | parsed, not running                                    |
+| Active health checks                         |   ❌   | parsed and validated, not running — designed in [DECISIONS.md §8](DECISIONS.md#8-deliberately-not-built-active-health-checks) |
 
 "Parsed" means a config using the feature loads and boots cleanly; the omission is logged once at
-`info` and the route works without it.
+`info` and the route works without it. Dead targets are still handled: they answer 502/504, retry
+replays refused connections, and the circuit breaker takes a persistently failing route out of
+rotation.
 
 ## Project layout
 
@@ -130,8 +132,13 @@ lib/gateway_kit/
 ├── context.ex            request/response struct that flows through stages
 ├── stage.ex              the middleware behaviour
 ├── pipeline.ex           composes enabled stages into one closure per route
-├── stage/proxy.ex        terminal stage: forward upstream
-├── upstream/             target selection, health supervisor
+├── stage/                one module per feature: auth, rate limit, breaker,
+│                         transforms, retry, and the terminal proxy
+├── rate_limit/           windowed ETS counters; fixed and sliding strategies
+├── breaker.ex            circuit-breaker state machine
+├── backoff.ex            retry delays
+├── transform/            interpolation, headers, body mapping, envelope
+├── upstream/             balancer, target selector (health supervisor placeholder)
 ├── store.ex              supervised owner of all ETS state
 └── config/               loader, validator, duration parsing, typed structs
 lib/mix/tasks/            mix gateway, mix upstreams

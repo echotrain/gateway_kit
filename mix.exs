@@ -7,7 +7,6 @@ defmodule GatewayKit.MixProject do
     [
       aliases: aliases(),
       app: :gateway_kit,
-      cli: cli(),
       deps: deps(),
       elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -35,9 +34,11 @@ defmodule GatewayKit.MixProject do
     ]
   end
 
-  defp cli do
+  # Mix calls `cli/0` (it must be public) to pick the env for these tasks and aliases.
+  def cli do
     [
       preferred_envs: [
+        check: :test,
         credo: :test,
         dialyzer: :test,
         test: :test,
