@@ -113,7 +113,7 @@ is tested with an injectable clock, not `Process.sleep`.
 | Retry with backoff                           |   ✅   | fixed / exponential; never replays after a timeout     |
 | Circuit breaker                              |   ✅   | closed → open → half-open; single trial via ETS CAS    |
 | Request / response transforms               |   ✅   | headers add/remove, body mapping, envelope, `$vars`    |
-| Load balancing (round robin / weighted)      |   ❌   | `targets` accepted; first target used                  |
+| Load balancing (round robin / weighted)      |   ✅   | ring expanded at load; one atomic cursor per route     |
 | Active health checks                         |   ❌   | parsed, not running                                    |
 
 "Parsed" means a config using the feature loads and boots cleanly; the omission is logged once at

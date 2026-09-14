@@ -380,12 +380,27 @@ Four small pure modules and two thin stages:
 The stages sit inside the breaker and outside retry, so a retried request is transformed once
 and only the final upstream answer is enveloped.
 
+### Phase 7 — load balancing
+
+This is rule §3.3.2 paying off. Because `url:` and `targets:` had normalized to one list of
+targets with a pre-expanded selection `ring` since Phase 1, wiring the balancer in was **one
+line in one module**: `Upstream.Selector.select/1` went from "the first target" to
+`Balancer.select/1`. The proxy, the pipeline, the config layer and every test above did not
+change.
+
+`Upstream.Balancer` advances a per-route cursor with one atomic `:ets.update_counter/4` whose
+threshold wraps it at the ring size, then indexes the ring with `elem/2`. `round_robin` and
+`weighted_round_robin` are the same operation over different rings (`3:1` → `[a, a, a, b]`),
+which is why the distribution is exact rather than statistical: 400 requests split 300/100 both
+in the unit test and end to end over HTTP, and under concurrency every slot is handed out
+exactly once per cycle.
+
 ## 8. Not built yet
 
 Everything below is **parsed and validated** (a config using it boots) but not enforced; the
 omission is logged once at `info` per route:
 
-load balancing (`targets` accepted, first target used), `health_check`.
+`health_check`.
 
 ## 9. How AI tools were used
 
