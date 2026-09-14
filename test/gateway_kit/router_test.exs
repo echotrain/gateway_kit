@@ -16,7 +16,7 @@ defmodule GatewayKit.RouterTest do
   setup do
     router =
       Router.new([
-        route("/api", ["GET", "PATCH"]),
+        route("/api", ["GET", "POST"]),
         route("/api/users", ["GET", "POST"]),
         route("/api/users/admin", ["DELETE"]),
         route("/api/orders", ["GET"]),
@@ -38,19 +38,19 @@ defmodule GatewayKit.RouterTest do
       assert {:error, :not_found} = Router.match(router, "GET", ~w(apiary))
     end
 
-    test "falls through to the next-longest prefix that allows the method", %{router: router} do
-      assert {:ok, %Route{path: "/api/users"}, ["admin"]} = Router.match(router, "GET", ~w(api users admin))
-      assert {:ok, %Route{path: "/api"}, ["users", "admin"]} = Router.match(router, "PATCH", ~w(api users admin))
+    test "the longest matching prefix decides, even when a shorter route accepts the method", %{router: router} do
+      assert {:error, {:method_not_allowed, ["DELETE"]}} = Router.match(router, "GET", ~w(api users admin))
+      assert {:error, {:method_not_allowed, ["GET", "POST"]}} = Router.match(router, "PATCH", ~w(api users))
     end
 
-    test "same-length routes are tried in config order", %{router: router} do
+    test "same-length routes are tried in config order and may split a path by method", %{router: router} do
       assert {:ok, %Route{path: "/api/orders", methods: ["GET"]}, []} = Router.match(router, "GET", ~w(api orders))
       assert {:ok, %Route{path: "/api/orders", methods: ["PUT"]}, []} = Router.match(router, "PUT", ~w(api orders))
     end
 
-    test "a matched path with no allowed method is 405 with the union of allowed methods", %{router: router} do
-      assert {:error, {:method_not_allowed, ["GET", "PATCH", "POST"]}} = Router.match(router, "OPTIONS", ~w(api users))
-      assert {:error, {:method_not_allowed, ["GET", "PATCH", "PUT"]}} = Router.match(router, "DELETE", ~w(api orders))
+    test "a matched path with no allowed method is 405 with the union of that path's methods", %{router: router} do
+      assert {:error, {:method_not_allowed, ["GET", "POST"]}} = Router.match(router, "OPTIONS", ~w(api users))
+      assert {:error, {:method_not_allowed, ["GET", "PUT"]}} = Router.match(router, "DELETE", ~w(api orders))
     end
 
     test "an unmatched path is not found", %{router: router} do

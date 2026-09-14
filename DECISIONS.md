@@ -164,7 +164,7 @@ The spec says ambiguity is intentional: *"Make a call, document your reasoning, 
 | Ambiguity | Call | Reasoning |
 | --- | --- | --- |
 | Path matching | **Prefix**, segment-aligned. Longest prefix wins. | `strip_prefix: /api/products/123 → /123` proves prefix semantics. `/api/userspace` must **not** match `/api/users` — segment alignment prevents that. |
-| Overlapping routes | The most specific route matching **both** path and method wins; a longer prefix that rejects the method falls through to a shorter one that accepts it. | Matches Kong/Envoy semantics, where method is part of matching. 405 only when *no* path match accepts the method; `Allow` is the union across path matches. |
+| Overlapping routes | The **longest** matching prefix decides. Same-length routes keep config order and may split one path by method; a shorter route is never consulted for a method the longer one rejects. | `POST /api/users` against `/api/users [GET]` must be a 405 (core requirement 4) even if `/api [POST]` exists. Kong-style fall-through was built first and reverted: defensible, but it made the 405 depend on unrelated routes. |
 | `strip_prefix` on an exact path match | Forwards `/` | An empty path is not a valid request target. |
 | 404 vs 405 | Match path first; matched path + wrong method → **405 + `Allow`** | RFC 7231 §6.5.5. |
 | `/health` vs a configured `/health` route | Built-in wins | The spec says it is always available regardless of config. |
@@ -409,6 +409,11 @@ with the core requirements treated as non-negotiable. Three small gaps were foun
   one requirement that says "passed as a command-line argument". Both tasks now go through
   `GatewayKit.CLI`: `--config PATH` or a bare `PATH`; unknown options or a second path are an
   error with usage.
+- **A 405 could depend on unrelated routes.** The router had Kong-style fall-through: a longer
+  prefix that rejected the method deferred to a shorter one that accepted it, so `POST
+  /api/users` against `/api/users [GET]` would be proxied through `/api [POST]` instead of
+  answering 405. Core requirement 4 reads literally; the router now lets the longest matching
+  prefix decide (same-length routes may still split a path by method).
 
 ## 8. Deliberately not built: active health checks
 
