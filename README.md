@@ -108,7 +108,7 @@ is tested with an injectable clock, not `Process.sleep`.
 | Method filtering (405 + `Allow`)             |   ✅   |                                                        |
 | Proxying with header hygiene                 |   ✅   | hop-by-hop stripped, `Host` rewritten, `X-Forwarded-*` |
 | Per-route timeouts (504) / upstream down (502)|  ✅   | `global_timeout` folded into each route                |
-| `api_key` auth                               |   ❌   | parsed, not enforced yet                               |
+| `api_key` auth                               |   ✅   | constant-time compare; missing and wrong key look alike |
 | Rate limiting (fixed / sliding window)       |   ❌   | parsed, not enforced yet                               |
 | Retry with backoff                           |   ❌   | parsed, not enforced yet                               |
 | Circuit breaker                              |   ❌   | parsed, not enforced yet                               |

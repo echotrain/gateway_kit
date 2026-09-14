@@ -18,12 +18,14 @@ defmodule GatewayKit.Pipeline do
   alias GatewayKit.Config.Route
   alias GatewayKit.Context
 
-  @stages [GatewayKit.Stage.Proxy]
+  @stages [
+    GatewayKit.Stage.Auth,
+    GatewayKit.Stage.Proxy
+  ]
 
   # Config features the validator accepts but no stage implements yet. A route using one still
   # boots; the omission is logged once here, never fatal.
   @unimplemented [
-    auth: "api_key authentication",
     rate_limit: "rate limiting",
     circuit_breaker: "circuit breaking",
     request_transform: "request transformation",

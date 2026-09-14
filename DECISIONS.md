@@ -251,12 +251,25 @@ real gateway against real mock upstreams for 200 proxying, 404, 405 + `Allow`, `
 504, and every config fixture (spec, minimal, alternate, and seven per-feature files) booting.
 The §9 smoke test was run by hand against `mix upstreams` on the real ports.
 
+### Phase 2 — `api_key` auth
+
+The cheapest complete feature in the config, built first *because* it proves the extensibility
+claim rather than asserting it: `GatewayKit.Stage.Auth` is one new module of about forty lines
+plus one entry in `Pipeline.stages/0`. Nothing else changed — not the endpoint, not the router,
+not the proxy, not the config layer (which already parsed `auth:` in Phase 1). Routes without an
+`auth:` block are compiled without the stage, so they pay nothing for its existence.
+
+Behaviour: `Plug.Crypto.secure_compare/2` against every configured key on every request (no
+short-circuit, so timing does not leak which key matched); a missing header and a wrong key
+return the identical 401 body. `type: api_key` is matched explicitly so `bearer` / `jwt` are
+additive clauses.
+
 ## 8. Not built yet
 
 Everything below is **parsed and validated** (a config using it boots) but not enforced; the
 omission is logged once at `info` per route:
 
-`auth`, `rate_limit`, `retry`, `circuit_breaker`, `request_transform`, `response_transform`,
+`rate_limit`, `retry`, `circuit_breaker`, `request_transform`, `response_transform`,
 load balancing (`targets` accepted, first target used), `health_check`.
 
 ## 9. How AI tools were used
