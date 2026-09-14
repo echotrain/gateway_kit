@@ -5,19 +5,27 @@ defmodule Mix.Tasks.Gateway do
   Starts the gateway and keeps it running.
 
       mix gateway --config gateway.yaml
+      mix gateway gateway.yaml
 
-  `--config` takes precedence over the `GATEWAY_CONFIG` environment variable, which takes
-  precedence over `./gateway.yaml`.
+  The path given here takes precedence over the `GATEWAY_CONFIG` environment variable, which
+  takes precedence over `./gateway.yaml`.
   """
 
   use Mix.Task
 
+  alias GatewayKit.CLI
+
   @impl Mix.Task
   def run(args) do
-    {opts, _rest, _invalid} = OptionParser.parse(args, strict: [config: :string])
+    case CLI.config_path(args, "gateway") do
+      {:ok, path} -> start(path)
+      {:error, message} -> Mix.raise(message)
+    end
+  end
 
+  defp start(path) do
     Mix.Task.run("app.config")
-    if path = opts[:config], do: Application.put_env(:gateway_kit, :config_path, path)
+    if path, do: Application.put_env(:gateway_kit, :config_path, path)
 
     Mix.Task.run("run", ["--no-halt"])
   end

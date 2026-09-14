@@ -6,6 +6,7 @@ defmodule Mix.Tasks.Upstreams do
   the gateway can be exercised end-to-end without real backends.
 
       mix upstreams --config gateway.yaml
+      mix upstreams gateway.yaml
 
   Every path answers with a JSON echo of the request (method, path, query, headers, body) and an
   `x-upstream-port` header; `/healthz` answers `{"status":"ok"}`.
@@ -13,16 +14,23 @@ defmodule Mix.Tasks.Upstreams do
 
   use Mix.Task
 
+  alias GatewayKit.CLI
   alias GatewayKit.Config
   alias GatewayKit.Config.Loader
 
   @impl Mix.Task
   def run(args) do
-    {opts, _rest, _invalid} = OptionParser.parse(args, strict: [config: :string])
+    case CLI.config_path(args, "upstreams") do
+      {:ok, path} -> start(path)
+      {:error, message} -> Mix.raise(message)
+    end
+  end
+
+  defp start(path) do
     Mix.Task.run("app.config")
     {:ok, _apps} = Application.ensure_all_started([:bandit, :jason])
 
-    path = Loader.resolve_path(path: opts[:config])
+    path = Loader.resolve_path(path: path)
 
     case Loader.load(path) do
       {:ok, config} -> serve(upstream_ports(config))

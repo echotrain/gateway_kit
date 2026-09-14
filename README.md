@@ -27,14 +27,17 @@ mix deps.get
 
 The gateway reads its config from a YAML file. The path is resolved in this order:
 
-1. `--config` flag (`mix gateway --config path.yaml`)
+1. Command-line argument (`mix gateway --config path.yaml` or `mix gateway path.yaml`)
 2. `GATEWAY_CONFIG` environment variable
 3. `./gateway.yaml`
 
 ```sh
 mix gateway --config gateway.yaml               # command-line argument
+mix gateway gateway.yaml                        # same, positional
 GATEWAY_CONFIG=gateway.yaml mix run --no-halt   # environment variable
 ```
+
+Unknown options or a second path are an error, never a silent fall-back to the default file.
 
 `gateway.yaml` in the repo root is the reference config: five routes on port 8080 exercising every
 feature of the schema. To try it without real backends, start echo servers on every upstream port

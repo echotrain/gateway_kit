@@ -399,6 +399,17 @@ which is why the distribution is exact rather than statistical: 400 requests spl
 in the unit test and end to end over HTTP, and under concurrency every slot is handed out
 exactly once per cycle.
 
+### Hardening after the requirements gut check
+
+After the phased build, the submission was re-read against the original requirements sheet
+with the core requirements treated as non-negotiable. Three small gaps were found and fixed:
+
+- **A positional config path was silently ignored.** `mix gateway some.yaml` parsed no
+  `--config` flag and booted `./gateway.yaml` instead — a wrong config with no error, on the
+  one requirement that says "passed as a command-line argument". Both tasks now go through
+  `GatewayKit.CLI`: `--config PATH` or a bare `PATH`; unknown options or a second path are an
+  error with usage.
+
 ## 8. Deliberately not built: active health checks
 
 `health_check` is the one schema feature that is **parsed, validated, and ignored**. A config
