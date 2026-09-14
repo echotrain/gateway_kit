@@ -1,0 +1,20 @@
+# Retry with fixed backoff against the mock upstream's /flaky endpoint (503 twice, then 200).
+# strip_prefix is false, so /api/flaky is forwarded as /api/flaky — the mock matches endpoints on
+# the trailing segment, so that still reaches /flaky. The short per-attempt timeout lets
+# /api/flaky/slow/500 drive the timeout path as well.
+
+gateway:
+  port: 8080
+
+routes:
+  - path: "/api/flaky"
+    methods: ["GET", "POST"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+      timeout: "200ms"
+    retry:
+      attempts: 3
+      backoff: "fixed"
+      initial_delay: "10ms"
+      on: [502, 503, 504]

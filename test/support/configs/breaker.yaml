@@ -1,0 +1,16 @@
+# Circuit breaker: three failures inside a minute trip it for 30s. Drive failures with
+# /api/fragile/status/500 (5xx) or by stopping the mock upstream (transport error).
+
+gateway:
+  port: 8080
+
+routes:
+  - path: "/api/fragile"
+    methods: ["GET", "POST"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+    circuit_breaker:
+      threshold: 3
+      window: "60s"
+      cooldown: "30s"

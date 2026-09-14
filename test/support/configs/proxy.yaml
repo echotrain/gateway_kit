@@ -1,0 +1,20 @@
+# Core proxying: the same upstream reached with the route prefix kept and with it stripped.
+# gateway.port is ignored by GatewayCase, which always binds port 0.
+
+gateway:
+  port: 8080
+
+routes:
+  # /api/echo/users -> upstream sees /api/echo/users
+  - path: "/api/echo"
+    methods: ["GET", "POST"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+
+  # /api/svc/users -> upstream sees /users
+  - path: "/api/svc"
+    methods: ["GET", "POST"]
+    strip_prefix: true
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"

@@ -1,0 +1,15 @@
+# API-key auth: requests without a valid X-API-Key must get 401 before anything else runs.
+
+gateway:
+  port: 8080
+
+routes:
+  - path: "/api/secure"
+    methods: ["GET", "POST"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+    auth:
+      type: "api_key"
+      header: "X-API-Key"
+      keys: ["k1", "k2"]

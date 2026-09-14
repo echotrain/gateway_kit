@@ -1,0 +1,40 @@
+# Rate limiting: one route per strategy, plus a route with no rate_limit block of its own that
+# must inherit global_rate_limit.
+
+gateway:
+  port: 8080
+  global_rate_limit:
+    requests: 5
+    window: "10s"
+    strategy: "fixed_window"
+    per: "global"
+
+routes:
+  - path: "/api/limited"
+    methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+    rate_limit:
+      requests: 10
+      window: "10s"
+      strategy: "fixed_window"
+      per: "ip"
+
+  - path: "/api/sliding"
+    methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+    rate_limit:
+      requests: 10
+      window: "10s"
+      strategy: "sliding_window"
+      per: "ip"
+
+  # No rate_limit here: the global default (5 per 10s, global bucket) applies.
+  - path: "/api/inherited"
+    methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"

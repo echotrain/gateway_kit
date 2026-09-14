@@ -1,0 +1,39 @@
+# Request and response transforms: the spec's /api/legacy block verbatim, pointed at the mock
+# upstream. /api/legacy/canned reaches the mock's canned endpoint, whose Server and X-Powered-By
+# headers are the ones the response transform removes.
+
+gateway:
+  port: 8080
+
+routes:
+  - path: "/api/legacy"
+    methods: ["GET", "POST"]
+    strip_prefix: true        # /api/legacy/v1/data -> /v1/data when forwarded
+    upstream:
+      url: "http://127.0.0.1:${UPSTREAM_PORT}"
+    request_transform:
+      headers:
+        add:
+          X-Gateway: "gatewaykit"
+          X-Request-Start: "$request_time"  # Dynamic value: inject request timestamp
+        remove: ["X-Debug", "X-Internal"]
+      body:
+        # Restructure the request body before forwarding
+        # Maps "destination path" <- "source path" using dot notation
+        mapping:
+          user.id: "userId"
+          user.name: "userName"
+          meta.source: "$literal:gateway"   # Inject a literal value
+          meta.timestamp: "$request_time"
+    response_transform:
+      headers:
+        add:
+          X-Served-By: "gatewaykit"
+        remove: ["Server", "X-Powered-By"]
+      body:
+        # Wrap the upstream response in an envelope
+        envelope:
+          data: "$body"                     # The original response body goes here
+          gateway_metadata:
+            served_at: "$response_time"
+            route: "$route_path"

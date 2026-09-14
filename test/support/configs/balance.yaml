@@ -1,0 +1,28 @@
+# Load balancing across two mock upstreams. Each mock response carries an x-upstream-port header,
+# so tests can count how many requests each target received.
+
+gateway:
+  port: 8080
+
+routes:
+  # 3:1 weighting — 400 requests should split roughly 300/100.
+  - path: "/api/lb"
+    methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      targets:
+        - url: "http://127.0.0.1:${UPSTREAM_PORT}"
+          weight: 3
+        - url: "http://127.0.0.1:${UPSTREAM_PORT_2}"
+          weight: 1
+      balance: "weighted_round_robin"
+
+  # Plain round robin over the same two targets; weights are optional and omitted here.
+  - path: "/api/rr"
+    methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      targets:
+        - url: "http://127.0.0.1:${UPSTREAM_PORT}"
+        - url: "http://127.0.0.1:${UPSTREAM_PORT_2}"
+      balance: "round_robin"
