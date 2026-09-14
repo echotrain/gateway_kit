@@ -7,8 +7,9 @@ defmodule GatewayKit.Application do
       GatewayKit.Supervisor
       ├─ GatewayKit.Store                       # ETS owner — started first, before any reader
       ├─ {Finch, name: GatewayKit.Finch}        # pooled upstream HTTP client
-      ├─ GatewayKit.Upstream.HealthSupervisor   # DynamicSupervisor for active health checks
-      └─ GatewayKit.Server                      # Bandit + Endpoint for the loaded config
+      └─ GatewayKit.Server                      # one gateway instance for the loaded config
+           ├─ GatewayKit.Upstream.HealthMonitor  # one per health-checked route
+           └─ Bandit → GatewayKit.Endpoint
 
   The config is loaded **before** the tree starts. A malformed config prints a report to stderr
   and exits non-zero — it never becomes a supervisor crash with a stacktrace. Setting
@@ -29,8 +30,7 @@ defmodule GatewayKit.Application do
     children =
       [
         GatewayKit.Store,
-        {Finch, name: GatewayKit.Finch, pools: finch_pools()},
-        GatewayKit.Upstream.HealthSupervisor
+        {Finch, name: GatewayKit.Finch, pools: finch_pools()}
       ] ++ server_children()
 
     Supervisor.start_link(children, strategy: :one_for_one, name: GatewayKit.Supervisor)

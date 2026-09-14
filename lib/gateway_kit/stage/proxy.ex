@@ -36,8 +36,10 @@ defmodule GatewayKit.Stage.Proxy do
 
   @impl GatewayKit.Stage
   def call(%Context{route: route} = ctx, _next) do
-    {:ok, target} = Selector.select(route)
-    forward(ctx, target)
+    case Selector.select(route) do
+      {:ok, target} -> forward(ctx, target)
+      {:error, :no_healthy_upstream} -> Context.halt(ctx, 503, %{error: "no_healthy_upstream"})
+    end
   end
 
   defp forward(%Context{route: route, request: request} = ctx, %Target{} = target) do

@@ -100,7 +100,8 @@ mix test.html     # HTML coverage report
 The suite is fully self-contained: every end-to-end test boots a real gateway **and** real mock
 upstreams on ephemeral ports (`test/support/`), so it is `async: true` throughout and never
 collides with a running dev gateway. Time-based behaviour (rate-limit windows, breaker cooldowns)
-is tested with an injectable clock, not `Process.sleep`.
+is tested with an injectable clock, not `Process.sleep`, and health probes are driven by a
+synchronous call rather than the timer.
 
 ## Feature checklist
 
@@ -119,12 +120,10 @@ is tested with an injectable clock, not `Process.sleep`.
 | Circuit breaker                              |   ✅   | closed → open → half-open; single trial via ETS CAS    |
 | Request / response transforms               |   ✅   | headers add/remove, body mapping, envelope, `$vars`    |
 | Load balancing (round robin / weighted)      |   ✅   | ring expanded at load; one atomic cursor per route     |
-| Active health checks                         |   ❌   | parsed and validated, not running — designed in [DECISIONS.md §8](DECISIONS.md#8-deliberately-not-built-active-health-checks) |
+| Active health checks                         |   ✅   | per-route monitor; unhealthy targets skipped; fails closed |
 
-"Parsed" means a config using the feature loads and boots cleanly; the omission is logged once at
-`info` and the route works without it. Dead targets are still handled: they answer 502/504, retry
-replays refused connections, and the circuit breaker takes a persistently failing route out of
-rotation.
+Every feature in the schema is enforced. Known approximations (sliding-window estimation, weight
+skew while a target is unhealthy) are listed in [DECISIONS.md §8](DECISIONS.md#8-partially-implemented-features-and-their-current-state).
 
 ## Project layout
 
@@ -143,7 +142,7 @@ lib/gateway_kit/
 ├── breaker.ex            circuit-breaker state machine
 ├── backoff.ex            retry delays
 ├── transform/            interpolation, headers, body mapping, envelope
-├── upstream/             balancer, target selector (health supervisor placeholder)
+├── upstream/             balancer, target selector, health state and monitor
 ├── store.ex              supervised owner of all ETS state
 └── config/               loader, validator, duration parsing, typed structs
 lib/mix/tasks/            mix gateway, mix upstreams

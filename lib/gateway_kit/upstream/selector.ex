@@ -10,6 +10,6 @@ defmodule GatewayKit.Upstream.Selector do
   alias GatewayKit.Config.{Route, Target}
   alias GatewayKit.Upstream.Balancer
 
-  @spec select(Route.t()) :: {:ok, Target.t()}
-  def select(%Route{} = route), do: {:ok, Balancer.select(route)}
+  @spec select(Route.t()) :: {:ok, Target.t()} | {:error, :no_healthy_upstream}
+  def select(%Route{} = route), do: Balancer.select(route)
 end
