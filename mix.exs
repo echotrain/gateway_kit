@@ -5,6 +5,7 @@ defmodule GatewayKit.MixProject do
 
   def project do
     [
+      aliases: aliases(),
       app: :gateway_kit,
       cli: cli(),
       deps: deps(),
@@ -20,7 +21,17 @@ defmodule GatewayKit.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {GatewayKit.Application, []}
+    ]
+  end
+
+  defp aliases do
+    [
+      check: ["format --check-formatted", "credo --strict --min-priority=higher", "test"],
+      f: "format",
+      "test.html": "coveralls.html",
+      "test.json": "coveralls.json"
     ]
   end
 
@@ -29,7 +40,9 @@ defmodule GatewayKit.MixProject do
       preferred_envs: [
         credo: :test,
         dialyzer: :test,
-        test: :test
+        test: :test,
+        "test.html": :test,
+        "test.json": :test
       ]
     ]
   end
@@ -37,6 +50,13 @@ defmodule GatewayKit.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Runtime deps — see DECISIONS.md "Library policy" for what is deliberately NOT here.
+      {:bandit, "~> 1.12"},
+      {:finch, "~> 0.23"},
+      {:jason, "~> 1.4"},
+      {:plug, "~> 1.20"},
+      {:yaml_elixir, "~> 2.12"},
+
       # Dev/Test Only Deps
       {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.8", only: [:dev, :test], runtime: false},
