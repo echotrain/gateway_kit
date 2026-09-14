@@ -1,0 +1,108 @@
+# examples/alternate.yaml — the "different config file" rehearsal.
+#
+# Same schema as gateway.yaml, every value different and every enum flipped:
+#   * global rate limit is sliding_window / global   (spec: fixed_window / ip)
+#   * retry backoff is fixed                          (spec: exponential)
+#   * load balancing is round_robin over three targets, some without weights
+#   * auth uses a different header name and different keys
+#   * different paths, different upstream ports (4101-4105), and a "/" catch-all route last
+#
+# A gateway that boots both this file and gateway.yaml unchanged is schema-general, not
+# sample-shaped.
+
+gateway:
+  port: 9000
+  global_timeout: "15s"
+  global_rate_limit:
+    requests: 500
+    window: "2m"
+    strategy: "sliding_window"
+    per: "global"
+
+routes:
+  # Sliding-window limit keyed globally rather than per client IP; PATCH/DELETE allowed.
+  - path: "/v2/accounts"
+    methods: ["GET", "POST", "PATCH", "DELETE"]
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:4101"
+      timeout: "2s"
+    rate_limit:
+      requests: 20
+      window: "30s"
+      strategy: "sliding_window"
+      per: "global"
+
+  # Fixed backoff, a single retry-worthy status, and a fixed-window per-IP limit.
+  - path: "/v2/search"
+    methods: ["GET"]
+    strip_prefix: true
+    upstream:
+      url: "http://localhost:4102"
+      timeout: "750ms"
+    retry:
+      attempts: 2
+      backoff: "fixed"
+      initial_delay: "250ms"
+      on: [503]
+    rate_limit:
+      requests: 5
+      window: "5s"
+      strategy: "fixed_window"
+      per: "ip"
+
+  # Plain round robin over three targets; weight is optional and omitted on two of them.
+  # The response transform has only a body envelope (no headers), and the envelope is nested.
+  - path: "/v2/reports"
+    methods: ["GET", "POST"]
+    strip_prefix: true
+    upstream:
+      targets:
+        - url: "http://localhost:4103"
+        - url: "http://localhost:4104"
+          weight: 2
+        - url: "http://localhost:4105"
+      balance: "round_robin"
+      timeout: "20s"
+    health_check:
+      path: "/ping"
+      interval: "10s"
+      unhealthy_threshold: 1
+    response_transform:
+      body:
+        envelope:
+          result: "$body"
+          meta:
+            generated_at: "$response_time"
+            via:
+              gateway: "gatewaykit"
+              route: "$route_path"
+
+  # Different auth header and keys, a tighter breaker, and a header-only request transform
+  # (no body mapping).
+  - path: "/v2/admin"
+    methods: ["GET", "POST", "PUT", "DELETE"]
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:4105"
+    auth:
+      type: "api_key"
+      header: "Authorization-Key"
+      keys: ["alt_key_one", "alt_key_two", "alt_key_three"]
+    circuit_breaker:
+      threshold: 2
+      window: "20s"
+      cooldown: "5s"
+    request_transform:
+      headers:
+        add:
+          X-Env: "alternate"
+          X-Received-At: "$request_time"
+        remove: ["Cookie"]
+
+  # Catch-all. Longest-prefix matching means this only wins when nothing above matches.
+  - path: "/"
+    methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:4101"

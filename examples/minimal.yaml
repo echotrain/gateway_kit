@@ -1,0 +1,14 @@
+# examples/minimal.yaml — the smallest valid GatewayKit config.
+#
+# One route and nothing optional: no global_timeout, no global_rate_limit, no per-route
+# rate_limit / retry / circuit_breaker / auth / transforms / health_check, and no strip_prefix
+# (which defaults to false). A gateway that boots this proves every default resolves on its own.
+
+gateway:
+  port: 9090
+
+routes:
+  - path: "/api"
+    methods: ["GET"]
+    upstream:
+      url: "http://localhost:4001"

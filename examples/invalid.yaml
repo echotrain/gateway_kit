@@ -1,0 +1,55 @@
+# examples/invalid.yaml — drives the validation-error report tests.
+#
+# Well-formed YAML with six distinct schema errors in different places, so the report shows
+# several lines and each error is attributed to its own path:
+#
+#   gateway.port                  string instead of integer
+#   routes[0].methods             string instead of list
+#   routes[1].rate_limit.window   integer instead of duration
+#   routes[2].upstream            neither url nor targets
+#   routes[3].rate_limit.strategy unknown enum value
+#   routes[4]                     missing path
+
+gateway:
+  port: "8080"
+  global_timeout: "30s"
+
+routes:
+  - path: "/api/users"
+    methods: "GET"
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:3001"
+
+  - path: "/api/orders"
+    methods: ["GET", "POST"]
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:3002"
+    rate_limit:
+      requests: 10
+      window: 60
+      strategy: "fixed_window"
+      per: "ip"
+
+  - path: "/api/products"
+    methods: ["GET"]
+    strip_prefix: true
+    upstream:
+      timeout: "5s"
+
+  - path: "/api/legacy"
+    methods: ["GET", "POST"]
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:3005"
+    rate_limit:
+      requests: 30
+      window: "60s"
+      strategy: "token_bucket"
+      per: "ip"
+
+  - methods: ["GET"]
+    strip_prefix: false
+    upstream:
+      url: "http://localhost:3006"
