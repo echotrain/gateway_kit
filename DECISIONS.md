@@ -354,13 +354,38 @@ computed from the cooldown actually remaining.
 - Mimic was not needed: the mock upstream's status endpoint and stopping it produce the real 5xx
   and transport-failure conditions.
 
+### Phase 6 — transforms
+
+Four small pure modules and two thin stages:
+
+- `Transform.Interpolate` — one clause per `$variable` (`$request_time`, `$response_time`,
+  `$route_path`, `$body`; `$literal:` is parsed at load time). Adding a variable is one clause
+  here plus its name in `Config.Transform.variables/0`; the validator rejects anything else at
+  load, and a test asserts every declared variable resolves.
+- `Transform.Headers` — remove, then add. `add` *sets* (replaces a same-named header) so the
+  transform is idempotent. Case-insensitivity comes for free: names are lowercased at load and
+  both Bandit and Mint hand us lowercase names.
+- `Transform.BodyMapping` — whitelist restructure with dotted destinations; missing sources are
+  omitted rather than written as `null`.
+- `Transform.Envelope` — recursive substitution through maps and lists.
+- `Stage.RequestTransform` decodes the body **only** when a mapping is configured and only if it
+  is a JSON object; anything else is forwarded byte-for-byte. The proxy already drops the inbound
+  `content-length`, so the transformed body's length is recomputed by the HTTP client.
+- `Stage.ResponseTransform` transforms **upstream** responses only — a gateway-generated 502/504
+  keeps the uniform `{"error": ...}` shape. JSON bodies are embedded decoded; readable text is
+  embedded as a string; an encoded (`content-encoding`) or non-UTF-8 body is passed through
+  untouched rather than corrupted. `content-length` is recomputed explicitly and `content-type`
+  becomes `application/json`.
+
+The stages sit inside the breaker and outside retry, so a retried request is transformed once
+and only the final upstream answer is enveloped.
+
 ## 8. Not built yet
 
 Everything below is **parsed and validated** (a config using it boots) but not enforced; the
 omission is logged once at `info` per route:
 
-`request_transform`, `response_transform`, load balancing (`targets` accepted, first target
-used), `health_check`.
+load balancing (`targets` accepted, first target used), `health_check`.
 
 ## 9. How AI tools were used
 

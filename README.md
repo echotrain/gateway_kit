@@ -112,7 +112,7 @@ is tested with an injectable clock, not `Process.sleep`.
 | Rate limiting (fixed / sliding window)       |   ✅   | atomic ETS counters; `per: ip` / `global`; 429 + headers |
 | Retry with backoff                           |   ✅   | fixed / exponential; never replays after a timeout     |
 | Circuit breaker                              |   ✅   | closed → open → half-open; single trial via ETS CAS    |
-| Request / response transforms               |   ❌   | parsed, not applied yet                                |
+| Request / response transforms               |   ✅   | headers add/remove, body mapping, envelope, `$vars`    |
 | Load balancing (round robin / weighted)      |   ❌   | `targets` accepted; first target used                  |
 | Active health checks                         |   ❌   | parsed, not running                                    |
 
