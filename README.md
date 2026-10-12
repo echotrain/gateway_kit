@@ -1,4 +1,5 @@
 # GatewayKit
+### (Coding Exercise - Podium Interview)
 
 A lightweight, config-driven API gateway in Elixir. Point it at a YAML file and it routes, filters
 methods, rate-limits, transforms, retries, breaks circuits, and load-balances accordingly — with
