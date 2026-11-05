@@ -8,7 +8,7 @@ breaker, and the balancer are all built here on top of a bare HTTP server, HTTP 
 parser.
 
 Design notes, trade-offs, and the reasoning behind every ambiguous call live in
-[DECISIONS.md](DECISIONS.md).
+[DECISIONS.md](DECISIONS.md) file.
 
 ## Prerequisites
 
